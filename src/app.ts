@@ -1,5 +1,6 @@
 import express from "express";
 import authRouter from "./modules/auth/auth.router";
+import postsRouter from "./modules/posts/posts.router";
 
 const app = express();
 
@@ -10,5 +11,6 @@ app.get("/health", (req, res) => {
 })
 
 app.use("/auth", authRouter);
+app.use("/posts", postsRouter);
 
 export default app;
