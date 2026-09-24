@@ -4,6 +4,9 @@
     "testEnvironment": "node",
     "testMatch": [
       "**/tests/**/*.test.ts"
+    ],
+    "setupFiles": [
+      "./tests/setup.ts"
     ]
   },
   "name": "ts-board",
@@ -13,7 +16,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "jest",
+    "test": "jest --runInBand",
     "test:watch": "jest --watch"
   },
   "keywords": [],
