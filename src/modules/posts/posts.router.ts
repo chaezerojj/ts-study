@@ -28,7 +28,7 @@ router.post("/", authMiddleware, async (req, res) => {
     return;
   }
 
-  const post = await createPost(result.data, req.user!.userId);
+  const post = await createPost(result.data, req.user!.id);
   res.status(201).json(post);
 });
 
@@ -41,7 +41,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
   }
 
   try {
-    const post = await updatePost(Number(req.params.id), result.data, req.user!.userId);
+    const post = await updatePost(Number(req.params.id), result.data, req.user!.id);
     res.json(post);
   } catch (err: unknown){
     const message = err instanceof Error ? err.message : "서버 오류가 발생했습니다.";
@@ -51,7 +51,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
 
 router.delete("/:id", authMiddleware, async (req, res) => {
   try {
-    await deletePost(Number(req.params.id), req.user!.userId);
+    await deletePost(Number(req.params.id), req.user!.id);
     res.status(204).send();
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "서버 오류가 발생했습니다.";

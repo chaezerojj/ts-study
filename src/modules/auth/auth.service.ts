@@ -38,7 +38,7 @@ export async function login(input: LoginInput) {
     throw new Error("이메일 또는 비밀번호가 올바르지 않습니다.");
   }
 
-  const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
+  const token = jwt.sign({ id: user.id }, JWT_SECRET, {
     expiresIn: "7d",
   });
 
