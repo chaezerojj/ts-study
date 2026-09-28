@@ -15,6 +15,28 @@ import {
 
 const router = Router();
 
+// ! GET /posts - 게시글 목록 조회
+/**
+ * @openapi
+ * /posts:
+ *   get:
+ *     summary: 게시글 목록 조회
+ *     tags: [Posts]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *     responses:
+ *       200:
+ *         description: 성공
+ */
 router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = paginationSchema.safeParse(req.query);
@@ -29,6 +51,25 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
+// ! GET /posts/:id - 게시글 단건 조회
+/**
+ * @openapi
+ * /posts/{id}:
+ *   get:
+ *     summary: 게시글 단건 조회
+ *     tags: [Posts]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: 성공
+ *       404:
+ *         description: 게시글 없음
+ */
 router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const post = await getPostById(Number(req.params.id));
@@ -38,6 +79,32 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
+// ! POST /posts - 게시글 생성 (자물쇠 아이콘)
+/**
+ * @openapi
+ * /posts:
+ *   post:
+ *     summary: 게시글 생성
+ *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               content:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: 생성 성공
+ *       401:
+ *         description: 인증 필요
+ */
 router.post(
   "/",
   authMiddleware,
@@ -56,6 +123,41 @@ router.post(
   },
 );
 
+// ! PUT /posts/:id - 게시글 수정 (자물쇠 아이콘)
+/**
+ * @openapi
+ * /posts/{id}:
+ *   put:
+ *     summary: 게시글 수정
+ *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               content:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: 수정 성공
+ *       401:
+ *         description: 인증 필요
+ *       403:
+ *         description: 권한 없음
+ *       404:
+ *         description: 게시글 없음
+ */
 router.put(
   "/:id",
   authMiddleware,
@@ -78,6 +180,31 @@ router.put(
   },
 );
 
+// ! DELETE /posts/:id - 게시글 삭제 (자물쇠 아이콘)
+/**
+ * @openapi
+ * /posts/{id}:
+ *   delete:
+ *     summary: 게시글 삭제
+ *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       204:
+ *         description: 삭제 성공
+ *       401:
+ *         description: 인증 필요
+ *       403:
+ *         description: 권한 없음
+ *       404:
+ *         description: 게시글 없음
+ */
 router.delete(
   "/:id",
   authMiddleware,
