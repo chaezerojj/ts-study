@@ -1,4 +1,10 @@
-import { getPosts, getPostById, createPost, updatePost, deletePost } from "../../src/modules/posts/posts.service";
+import {
+  getPosts,
+  getPostById,
+  createPost,
+  updatePost,
+  deletePost,
+} from "../../src/modules/posts/posts.service";
 
 // prisma 전체를 모킹 — 실제 DB 연결 없이 가짜 함수로 대체
 jest.mock("../../src/lib/prisma", () => ({
@@ -10,7 +16,9 @@ jest.mock("../../src/lib/prisma", () => ({
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
-    },
+      count: jest.fn(),
+    },              
+    $transaction: jest.fn(),
   },
 }));
 
@@ -23,7 +31,9 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma> & {
     create: jest.Mock;
     update: jest.Mock;
     delete: jest.Mock;
+    count: jest.Mock;
   };
+  $transaction: jest.Mock;
 };
 
 // 각 테스트 전에 모든 mock 초기화 (이전 테스트 결과가 섞이지 않도록)
@@ -37,17 +47,30 @@ beforeEach(() => {
 describe("getPosts", () => {
   it("게시글 목록을 반환한다", async () => {
     const fakePosts = [
-      { id: 1, title: "첫 번째 글", content: "내용1", authorId: 1, author: { id: 1, email: "a@test.com" } },
-      { id: 2, title: "두 번째 글", content: "내용2", authorId: 2, author: { id: 2, email: "b@test.com" } },
+      {
+        id: 1,
+        title: "첫 번째 글",
+        content: "내용1",
+        authorId: 1,
+        author: { id: 1, email: "a@test.com" },
+      },
+      {
+        id: 2,
+        title: "두 번째 글",
+        content: "내용2",
+        authorId: 2,
+        author: { id: 2, email: "b@test.com" },
+      },
     ];
 
-    // findMany가 호출되면 fakePosts를 반환하도록 설정
-    mockPrisma.post.findMany.mockResolvedValue(fakePosts as never);
+    mockPrisma.$transaction.mockResolvedValue([fakePosts, 2] as never);
 
-    const result = await getPosts();
+    const result = await getPosts({ page: 1, limit: 10 });
 
-    expect(result).toEqual(fakePosts);
-    expect(mockPrisma.post.findMany).toHaveBeenCalledTimes(1);
+    expect(result.data).toEqual(fakePosts);
+    expect(result.total).toBe(2);
+    expect(result.page).toBe(1);
+    expect(result.totalPages).toBe(1);
   });
 });
 
@@ -56,7 +79,13 @@ describe("getPosts", () => {
 // ────────────────────────────────────────────────────────────
 describe("getPostById", () => {
   it("존재하는 id면 게시글을 반환한다", async () => {
-    const fakePost = { id: 1, title: "글", content: "내용", authorId: 1, author: { id: 1, email: "a@test.com" } };
+    const fakePost = {
+      id: 1,
+      title: "글",
+      content: "내용",
+      authorId: 1,
+      author: { id: 1, email: "a@test.com" },
+    };
     mockPrisma.post.findUnique.mockResolvedValue(fakePost as never);
 
     const result = await getPostById(1);
@@ -68,7 +97,9 @@ describe("getPostById", () => {
     mockPrisma.post.findUnique.mockResolvedValue(null);
 
     // async 함수의 에러는 rejects.toThrow로 테스트
-    await expect(getPostById(999)).rejects.toThrow("게시글을 찾을 수 없습니다.");
+    await expect(getPostById(999)).rejects.toThrow(
+      "게시글을 찾을 수 없습니다.",
+    );
   });
 });
 
@@ -78,7 +109,13 @@ describe("getPostById", () => {
 describe("createPost", () => {
   it("새 게시글을 생성하고 반환한다", async () => {
     const input = { title: "새 글", content: "새 내용" };
-    const created = { id: 3, ...input, authorId: 1, createdAt: new Date(), updatedAt: new Date() };
+    const created = {
+      id: 3,
+      ...input,
+      authorId: 1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
     mockPrisma.post.create.mockResolvedValue(created as never);
 
     const result = await createPost(input, 1);
@@ -94,7 +131,12 @@ describe("createPost", () => {
 // updatePost
 // ────────────────────────────────────────────────────────────
 describe("updatePost", () => {
-  const existingPost = { id: 1, title: "원래 제목", content: "원래 내용", authorId: 1 };
+  const existingPost = {
+    id: 1,
+    title: "원래 제목",
+    content: "원래 내용",
+    authorId: 1,
+  };
 
   it("본인 게시글을 수정하면 성공한다", async () => {
     mockPrisma.post.findUnique.mockResolvedValue(existingPost as never);
@@ -109,14 +151,18 @@ describe("updatePost", () => {
   it("게시글이 없으면 에러를 던진다", async () => {
     mockPrisma.post.findUnique.mockResolvedValue(null);
 
-    await expect(updatePost(999, { title: "수정" }, 1)).rejects.toThrow("게시글을 찾을 수 없습니다.");
+    await expect(updatePost(999, { title: "수정" }, 1)).rejects.toThrow(
+      "게시글을 찾을 수 없습니다.",
+    );
   });
 
   it("작성자가 아니면 권한 에러를 던진다", async () => {
     mockPrisma.post.findUnique.mockResolvedValue(existingPost as never); // authorId: 1
 
     // userId: 2로 수정 시도 → 권한 없음
-    await expect(updatePost(1, { title: "수정" }, 2)).rejects.toThrow("수정 권한이 없습니다.");
+    await expect(updatePost(1, { title: "수정" }, 2)).rejects.toThrow(
+      "수정 권한이 없습니다.",
+    );
   });
 });
 
@@ -137,7 +183,9 @@ describe("deletePost", () => {
   it("게시글이 없으면 에러를 던진다", async () => {
     mockPrisma.post.findUnique.mockResolvedValue(null);
 
-    await expect(deletePost(999, 1)).rejects.toThrow("게시글을 찾을 수 없습니다.");
+    await expect(deletePost(999, 1)).rejects.toThrow(
+      "게시글을 찾을 수 없습니다.",
+    );
   });
 
   it("작성자가 아니면 권한 에러를 던진다", async () => {

@@ -1,12 +1,27 @@
 import prisma from "../../lib/prisma";
-import { CreatePostInput, UpdatePostInput } from "./posts.schema";
+import { CreatePostInput, UpdatePostInput, PaginationInput } from "./posts.schema";
 import { AppError } from "../../lib/errors";
 
-export async function getPosts() {
-  return prisma.post.findMany({
-    include: { author: { select: { id: true, email: true } } },
-    orderBy: { createdAt: "desc" },
-  });
+export async function getPosts({ page, limit }: PaginationInput) {
+  const skip = (page - 1) * limit;
+
+  const [posts, total] = await prisma.$transaction([
+    prisma.post.findMany({
+      skip,
+      take: limit,
+      include: { author: { select: { id: true, email: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.post.count(),
+  ]);
+
+  return {
+    data: posts,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+  };
 }
 
 export async function getPostById(id: number) {

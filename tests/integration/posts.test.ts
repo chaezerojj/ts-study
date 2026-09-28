@@ -3,8 +3,8 @@ import app from "../../src/app";
 import prisma from "../../src/lib/prisma";
 
 // 테스트 전체에서 재사용할 토큰과 유저 ID
-let tokenA: string;   // 유저 A의 JWT
-let tokenB: string;   // 유저 B의 JWT (권한 테스트용)
+let tokenA: string; // 유저 A의 JWT
+let tokenB: string; // 유저 B의 JWT (권한 테스트용)
 let userAId: number;
 
 // 모든 테스트 시작 전: 유저 2명 생성 후 각각 로그인
@@ -52,11 +52,12 @@ describe("GET /posts", () => {
     const res = await request(app).get("/posts");
 
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body)).toBe(true);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body).toHaveProperty("total");
+    expect(res.body).toHaveProperty("totalPages");
   });
 
   it("게시글이 있으면 목록에 포함된다", async () => {
-    // 먼저 게시글 생성
     await request(app)
       .post("/posts")
       .set("Authorization", `Bearer ${tokenA}`)
@@ -65,8 +66,8 @@ describe("GET /posts", () => {
     const res = await request(app).get("/posts");
 
     expect(res.status).toBe(200);
-    expect(res.body).toHaveLength(1);
-    expect(res.body[0].title).toBe("테스트 글");
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].title).toBe("테스트 글");
   });
 });
 
@@ -200,8 +201,7 @@ describe("DELETE /posts/:id", () => {
   });
 
   it("토큰 없이 삭제하면 401을 반환한다", async () => {
-    const res = await request(app)
-      .delete(`/posts/${postId}`);
+    const res = await request(app).delete(`/posts/${postId}`);
 
     expect(res.status).toBe(401);
   });
