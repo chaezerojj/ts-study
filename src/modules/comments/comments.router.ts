@@ -1,63 +1,43 @@
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { authMiddleware } from "../../middlewares/auth.middleware";
 import { createCommentSchema } from "./comments.schema";
 import * as commentsService from "./comments.service";
 
 const router = Router({ mergeParams: true });
 
-router.get("/", async (req: Request, res: Response) => {
+router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const postId = Number(req.params.postId);
     const comments = await commentsService.getCommentsByPostId(postId);
     res.json(comments);
   } catch (err) {
-    res.status(500).json({ message: "Internal server error" });
+    next(err);
   }
 });
 
-router.post("/", authMiddleware, async (req: Request, res: Response) => {
+router.post("/", authMiddleware, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const postId = Number(req.params.postId);
     const parsed = createCommentSchema.safeParse(req.body);
-
     if (!parsed.success) {
       res.status(400).json({ message: parsed.error.flatten() });
       return;
     }
-
-    const comment = await commentsService.createCommment(
-      postId,
-      req.user!.id,
-      parsed.data,
-    );
+    const comment = await commentsService.createCommment(postId, req.user!.id, parsed.data);
     res.status(201).json(comment);
   } catch (err) {
-    res.status(500).json({ message: "Internal server error" });
+    next(err);
   }
 });
 
-router.delete(
-  "/:commentId",
-  authMiddleware,
-  async (req: Request, res: Response) => {
-    try {
-      const id = Number(req.params.commentId);
-      await commentsService.deleteComment(id, req.user!.id);
-      res.status(204).send();
-    } catch (err) {
-      if (err instanceof Error) {
-        if (err.message === "NOT_FOUND") {
-          res.status(404).json({ message: "Comment not found" });
-          return;
-        }
-        if (err.message === "FORBIDDEN") {
-          res.status(403).json({ message: "Forbidden" });
-          return;
-        }
-      }
-      res.status(500).json({ message: "Internal server error" });
-    }
-  },
-);
+router.delete("/:commentId", authMiddleware, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = Number(req.params.commentId);
+    await commentsService.deleteComment(id, req.user!.id);
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+});
 
 export default router;
